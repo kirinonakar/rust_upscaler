@@ -36,6 +36,7 @@ export component MainWindow inherits Window {
             horizontal-alignment: center;
             font-size: 14px;
             color: gray;
+            wrap: word-wrap;
         }
 
         if (root.is_processing) : ProgressIndicator {
@@ -57,7 +58,7 @@ export component MainWindow inherits Window {
 
         HorizontalBox {
             alignment: center;
-            height: 35px; // Fixed height for 1 line
+            height: 50px; // Fixed height for 1 line
             Text {
                  text: "Model: ";
                  vertical-alignment: center;
@@ -74,7 +75,7 @@ export component MainWindow inherits Window {
 
         HorizontalBox {
             alignment: center;
-            height: 35px; // Fixed height for 1 line
+            height: 50px; // Fixed height for 1 line
             Text {
                  text: "Scale: ";
                  vertical-alignment: center;
