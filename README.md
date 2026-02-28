@@ -7,6 +7,7 @@ A high-performance image upscaling application written in **Rust**, powered by *
 ![ONNX](https://img.shields.io/badge/Inference-ONNX-blueviolet)
 ![DirectML](https://img.shields.io/badge/Acceleration-DirectML-green)
 
+ ![screenshot1](screenshot.png)
 ---
 
 ## ✨ Key Features

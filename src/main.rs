@@ -10,8 +10,7 @@ use std::sync::OnceLock;
 use glob::glob;
 use ort::session::Session;
 use ort::value::Value;
-use std::fs::OpenOptions;
-use std::io::Write;
+
 use std::panic;
 
 // --- Slint HWND and Hooking (Windows only) ---
@@ -151,7 +150,6 @@ fn main() -> Result<()> {
     panic::set_hook(Box::new(|info| {
         let msg = format!("PANIC: {:?}", info);
         eprintln!("{}", msg);
-        log_to_file(&msg);
     }));
 
     let ui = MainWindow::new()?;
@@ -230,7 +228,6 @@ fn main() -> Result<()> {
                     Ok(s) => s,
                     Err(e) => {
                         let err_msg = format!("ONNX Load Error: {}", e);
-                        log_to_file(&err_msg);
                         update_status(&ui_thread, err_msg, 0.0);
                         finalize(&ui_thread);
                         return;
@@ -244,13 +241,11 @@ fn main() -> Result<()> {
                     let filename = p.file_name().unwrap_or_default().to_string_lossy();
                     let status = format!("Processing {} ({} / {}) - Inference start...", filename, i + 1, total);
                     update_status(&ui_thread, status.clone(), i as f32 / total as f32);
-                    log_to_file(&status);
 
                     match process_image(p, &mut model, &device, &scale_setting) {
                         Ok(out_p) => {
                             let done_msg = format!("Finished processing {}!", filename);
                             update_status(&ui_thread, done_msg.clone(), (i + 1) as f32 / total as f32);
-                            log_to_file(&done_msg);
                             let _ = slint::invoke_from_event_loop({
                                 let ui_weak = ui_thread.clone();
                                 move || {
@@ -265,7 +260,6 @@ fn main() -> Result<()> {
                         }
                         Err(e) => {
                             let err_msg = format!("Process Error: {}", e);
-                            log_to_file(&err_msg);
                             update_status(&ui_thread, err_msg, i as f32 / total as f32);
                         }
                     }
@@ -309,7 +303,6 @@ fn main() -> Result<()> {
 fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_setting: &str) -> Result<PathBuf> {
     let start_msg = format!("[Process] Loading image: {:?}", path);
     println!("{}", start_msg);
-    log_to_file(&start_msg);
     let img = image::open(path)?;
     let (w, h) = img.dimensions();
     let img_rgb = img.to_rgb8();
@@ -317,7 +310,6 @@ fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_sett
     
     let norm_msg = "[Process] Normalizing tensor...".to_string();
     println!("{}", norm_msg);
-    log_to_file(&norm_msg);
     // Normalize to [0, 1]
     let tensor = Tensor::from_vec(data, (h as usize, w as usize, 3), device)?
         .permute((2, 0, 1))?
@@ -327,18 +319,15 @@ fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_sett
 
     let fw_msg = "[Process] Starting model forward pass...".to_string();
     println!("{}", fw_msg);
-    log_to_file(&fw_msg);
     // Inference
     let output = model.forward(&tensor)?;
     
     let fw_end_msg = "[Process] Forward pass completed.".to_string();
     println!("{}", fw_end_msg);
-    log_to_file(&fw_end_msg);
     
     // Denormalize
     let dnorm_msg = "[Process] Denormalizing output...".to_string();
     println!("{}", dnorm_msg);
-    log_to_file(&dnorm_msg);
 
     let start_dnorm = std::time::Instant::now();
     // Move to CPU first and then do operations if needed, or keep on GPU as much as possible
@@ -351,7 +340,6 @@ fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_sett
 
     let save_msg = format!("[Process] Saving output: {}x{}", ow, oh);
     println!("{}", save_msg);
-    log_to_file(&save_msg);
 
     let start_save = std::time::Instant::now();
     let mut out_img: DynamicImage = DynamicImage::ImageRgb8(
@@ -422,13 +410,4 @@ fn finalize(ui_weak: &slint::Weak<MainWindow>) {
 }
 
 
-fn log_to_file(text: &str) {
-    if let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("errors.log")
-    {
-        let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-        let _ = writeln!(file, "[{}] {}", now, text);
-    }
-}
+
