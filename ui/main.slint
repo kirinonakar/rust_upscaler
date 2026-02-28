@@ -1,0 +1,102 @@
+import { VerticalBox, Button, CheckBox, ProgressIndicator, ComboBox, HorizontalBox } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    width: 600px;
+    height: 700px;
+    title: "Image Upscaler";
+    icon: @image-url("../app.ico");
+
+    callback files_dropped(string);
+    in property <string> status_text: "Drag and Drop Image here or Select File";
+    in property <image> preview_image;
+    in property <bool> has_image: false;
+    
+    in property <bool> is_processing: false;
+    in property <float> progress: 0.0;
+
+    // Model list and scaling options
+    in property <[string]> models: ["No models found"];
+    in-out property <string> selected_model: "";
+    in property <[string]> scale_options: ["x2", "x3", "x4", "2M Pixels", "3M Pixels", "4M Pixels"];
+    in-out property <string> selected_scale: "3M Pixels";
+
+    VerticalBox {
+        spacing: 10px;
+        padding: 20px;
+
+        Text {
+            text: root.title;
+            font-size: 24px;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.status_text;
+            horizontal-alignment: center;
+            font-size: 14px;
+            color: gray;
+        }
+
+        if (root.is_processing) : ProgressIndicator {
+            progress: root.progress;
+        }
+
+        if (root.has_image) : Image {
+            source: root.preview_image;
+            max-width: 400px;
+            max-height: 400px;
+            image-fit: contain;
+            horizontal-alignment: center;
+        }
+
+        // Pushes subsequent elements to the bottom
+        Rectangle {
+            vertical-stretch: 1;
+        }
+
+        HorizontalBox {
+            alignment: center;
+            height: 35px; // Fixed height for 1 line
+            Text {
+                 text: "Model: ";
+                 vertical-alignment: center;
+            }
+            ComboBox {
+                width: 300px;
+                model: root.models;
+                current-value: root.selected_model;
+                selected => {
+                    root.selected_model = self.current-value;
+                }
+            }
+        }
+
+        HorizontalBox {
+            alignment: center;
+            height: 35px; // Fixed height for 1 line
+            Text {
+                 text: "Scale: ";
+                 vertical-alignment: center;
+            }
+            ComboBox {
+                width: 300px;
+                model: root.scale_options;
+                current-value: root.selected_scale;
+                selected => {
+                    root.selected_scale = self.current-value;
+                }
+            }
+        }
+
+        Button {
+            text: "Select Image & Process";
+            primary: true;
+            height: 45px;
+            enabled: !root.is_processing;
+            clicked => {
+                root.files-dropped("");
+            }
+        }
+    }
+}

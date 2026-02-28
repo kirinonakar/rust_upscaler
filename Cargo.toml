@@ -1,0 +1,23 @@
+[package]
+name = "rust_rmbg"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+slint = { version = "1.15.1", features = ["raw-window-handle-06"] }
+image = { version = "0.25.1" }
+rfd = "0.14.1"
+anyhow = "1.0.86"
+candle-core = "0.8.2"
+candle-nn = "0.8.2"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Ole"] }
+raw-window-handle = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+glob = "0.3"
+
+[build-dependencies]
+slint-build = "1.15.1"
+winres = "0.1.12"
+winresource = "0.1"
