@@ -111,6 +111,10 @@ impl ModelType {
         let (b, c, h, w) = x.dims4().map_err(anyhow::Error::msg)?;
         let input_name = s.inputs().first().map(|i| i.name().to_string()).unwrap_or_else(|| "input".to_string());
         
+        // Settings for high quality tiling
+        let pad = 32; // Overlap/Padding size to avoid edge artifacts. 32 is standard for high quality.
+        let mut scale = 0;
+        
         let mut row_tensors = Vec::new();
         for y in (0..h).step_by(tile_size) {
             let mut col_tensors = Vec::new();
@@ -118,28 +122,53 @@ impl ModelType {
                 let th = (tile_size).min(h - y);
                 let tw = (tile_size).min(w - x_pos);
                 
-                let tile = x.narrow(2, y, th)?.narrow(3, x_pos, tw)?;
-                // Critical: Ensure tile is on CPU before sending to ORT if providers expect that
-                // ORT with CUDA normally handles this, but let's be explicit.
+                // Calculate padded coordinates
+                let y1 = if y > pad { y - pad } else { 0 };
+                let y2 = (y + th + pad).min(h);
+                let x1 = if x_pos > pad { x_pos - pad } else { 0 };
+                let x2 = (x_pos + tw + pad).min(w);
+                
+                let p_th = y2 - y1;
+                let p_tw = x2 - x1;
+                
+                let tile = x.narrow(2, y1, p_th)?.narrow(3, x1, p_tw)?;
                 let data = tile.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
-                let input_val = Value::from_array(([b, c, th, tw], data)).map_err(anyhow::Error::msg)?;
+                let input_val = Value::from_array(([b, c, p_th, p_tw], data)).map_err(anyhow::Error::msg)?;
                 
                 let start_tile = std::time::Instant::now();
                 let outputs = s.run(ort::inputs![input_name.as_str() => input_val]).map_err(anyhow::Error::msg)?;
                 let tile_time = start_tile.elapsed();
-                println!("[Tiling] Tile at ({}, {}) processed in {:?}", x_pos, y, tile_time);
-                let output_val = outputs.iter().next().map(|(_, v)| v).ok_or_else(|| anyhow::anyhow!("No outputs"))?;
+                
+                let output_val = outputs.iter().next().map(|(_, v)| v).ok_or_else(|| anyhow::anyhow!("No outputs from model"))?;
                 let (dims_shape, output_slice) = output_val.try_extract_tensor::<f32>().map_err(anyhow::Error::msg)?;
                 
-                let t_out = Tensor::from_vec(output_slice.to_vec(), (dims_shape[0] as usize, dims_shape[1] as usize, dims_shape[2] as usize, dims_shape[3] as usize), &device).map_err(anyhow::Error::msg)?;
-                col_tensors.push(t_out);
+                let out_h = dims_shape[2] as usize;
+                let out_w = dims_shape[3] as usize;
+                
+                if scale == 0 {
+                    scale = out_h / p_th;
+                    println!("[Tiling] Detected scale factor: {}", scale);
+                }
+                
+                let t_out = Tensor::from_vec(output_slice.to_vec(), (dims_shape[0] as usize, dims_shape[1] as usize, out_h, out_w), &device).map_err(anyhow::Error::msg)?;
+                
+                // Crop out the padding from the upscaled tile
+                let crop_y = (y - y1) * scale;
+                let crop_x = (x_pos - x1) * scale;
+                let crop_h = th * scale;
+                let crop_w = tw * scale;
+                
+                let t_cropped = t_out.narrow(2, crop_y, crop_h)?.narrow(3, crop_x, crop_w)?;
+                
+                println!("[Tiling] Tile at ({}, {}) processed in {:?}. (Padded: {}x{} -> {}x{}, Cropped: {}x{})", x_pos, y, tile_time, p_tw, p_th, out_w, out_h, crop_w, crop_h);
+                col_tensors.push(t_cropped);
             }
             let row = Tensor::cat(&col_tensors, 3).map_err(anyhow::Error::msg)?;
             row_tensors.push(row);
         }
         
         let final_tensor = Tensor::cat(&row_tensors, 2).map_err(anyhow::Error::msg)?;
-        println!("[Tiling] Total tiling inference completed in {:?}", start_all.elapsed());
+        println!("[Tiling] Total tiling inference and assembly completed in {:?}", start_all.elapsed());
         Ok(final_tensor)
     }
 }
