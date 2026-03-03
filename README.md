@@ -40,13 +40,9 @@ Place your `.onnx` upscaling models in the **root directory** of the application
 - Real-ESRGAN_x4plus_anime_6B
 - 4xNomos8kDAT
 
-### 2. Running the App
-For the best performance, always run in **release** mode:
-```bash
-cargo run --release
-```
 
-### 3. Processing Images
+
+### 2. Processing Images
 1.  Launch the application.
 2.  Select your desired **ONNX Model** from the dropdown.
 3.  Choose the **Output Scale** (e.g., x4).
@@ -54,6 +50,11 @@ cargo run --release
 5.  Check the progress bar and wait for the "Processing completed!" message.
 6.  **Output**: Upscaled images are saved in the original folder with `_upscaled` appended to the filename and stored in **PNG** format.
 
+### 3. Build from source
+For the best performance, always run in **release** mode:
+```bash
+cargo run --release
+```
 ---
 
 ## 🔧 Technical Overview
