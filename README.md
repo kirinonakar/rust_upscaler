@@ -14,7 +14,7 @@ A high-performance image upscaling application written in **Rust**, powered by *
 - **⚡ High-Performance GPU Acceleration**: Leverages **DirectML** (DirectX 12) for universal GPU support on Windows. No complicated CUDA/cuDNN setup required.
 - **🧩 Intelligent Tiling System**: Automatically splits large images (e.g., Ultra-HD wallpapers) into smaller tiles to prevent GPU Out-of-Memory (OOM) errors. Seamlessly reassembles tiles with zero artifacts.
 - **🚀 Ultra-Fast File Saving**: Custom optimized PNG encoder implementation that significantly reduces CPU time during final image saving, especially for high-resolution 4x outputs.
-- **🖼️ Batch Processing & Drag-n-Drop**: Easily drag and drop multiple images or folders directly onto the app window for sequential processing.
+- **🖼️ Batch Processing & Drag-n-Drop**: Easily drag and drop multiple images directly onto the app window for sequential processing.
 - **🎨 Modern & Responsive UI**: Built with the **Slint** framework for a sleek, lightweight, and native Windows experience.
 - **📏 Flexible Output Scaling**: Supports multiple output targets (Original x2, x3, x4 or specific pixel counts like 1MP to 6MP).
 
