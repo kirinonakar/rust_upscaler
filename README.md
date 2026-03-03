@@ -16,7 +16,7 @@ A high-performance image upscaling application written in **Rust**, powered by *
 - **🚀 Ultra-Fast File Saving**: Custom optimized PNG encoder implementation that significantly reduces CPU time during final image saving, especially for high-resolution 4x outputs.
 - **🖼️ Batch Processing & Drag-n-Drop**: Easily drag and drop multiple images or folders directly onto the app window for sequential processing.
 - **🎨 Modern & Responsive UI**: Built with the **Slint** framework for a sleek, lightweight, and native Windows experience.
-- **📏 Flexible Output Scaling**: Supports multiple output targets (Original x2, x3, x4 or specific pixel counts like 2MP, 4MP).
+- **📏 Flexible Output Scaling**: Supports multiple output targets (Original x2, x3, x4 or specific pixel counts like 1MP to 6MP).
 
 ---
 
@@ -34,6 +34,11 @@ You can download the latest version from the [Releases Page](https://github.com/
 
 ### 1. Model Setup
 Place your `.onnx` upscaling models in the **root directory** of the application. The app will automatically scan for and list them in the model selection menu.
+
+**Recommended models**: 
+- Real-ESRGAN_x4plus
+- Real-ESRGAN_x4plus_anime_6B
+- 4xNomos8kDAT
 
 ### 2. Running the App
 For the best performance, always run in **release** mode:

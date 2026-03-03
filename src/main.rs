@@ -382,9 +382,12 @@ fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_sett
         "x2" => (w * 2, h * 2),
         "x3" => (w * 3, h * 3),
         "x4" => (ow as u32, oh as u32),
+        "1M Pixels" => calculate_size(w, h, 1_000_000),
         "2M Pixels" => calculate_size(w, h, 2_000_000),
         "3M Pixels" => calculate_size(w, h, 3_000_000),
         "4M Pixels" => calculate_size(w, h, 4_000_000),
+        "5M Pixels" => calculate_size(w, h, 5_000_000),
+        "6M Pixels" => calculate_size(w, h, 6_000_000),
         _ => (ow as u32, oh as u32),
     };
 
