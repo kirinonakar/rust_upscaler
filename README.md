@@ -23,7 +23,7 @@ A high-performance image upscaling application written in **Rust**, powered by *
 ## 🛠️ Requirements
 
 - **OS**: Windows 10/11 (with DirectX 12 support).
-- **Models**: `.onnx` model files (e.g., Real-ESRGAN, SwinIR, or HAT converted to ONNX).
+- **Models**: `.onnx` model files (e.g., Real-ESRGAN or DAT converted to ONNX).
 - **GPU**: NVIDIA, AMD, or Intel GPU that supports DirectML.
 
 ---
