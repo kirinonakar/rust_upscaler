@@ -52,6 +52,7 @@ cargo run --release
 3.  Choose the **Output Scale** (e.g., x4).
 4.  **Drag and Drop** your images onto the window or use the file picker.
 5.  Check the progress bar and wait for the "Processing completed!" message.
+6.  **Output**: Upscaled images are saved in the original folder with `_upscaled` appended to the filename and stored in **PNG** format.
 
 ---
 
