@@ -13,6 +13,7 @@ A high-performance image upscaling application written in **Rust**, powered by *
 
 - **⚡ High-Performance GPU Acceleration**: Leverages **DirectML** (DirectX 12) for universal GPU support on Windows. No complicated CUDA/cuDNN setup required.
 - **🧩 Intelligent Tiling System**: Automatically splits large images (e.g., Ultra-HD wallpapers) into smaller tiles to prevent GPU Out-of-Memory (OOM) errors. Seamlessly reassembles tiles with zero artifacts.
+    - In case of HAT model, 256x256 tile size is recommended due to memory limitation.
 - **🚀 Ultra-Fast File Saving**: Custom optimized PNG encoder implementation that significantly reduces CPU time during final image saving, especially for high-resolution 4x outputs.
 - **🖼️ Batch Processing & Drag-n-Drop**: Easily drag and drop multiple images directly onto the app window for sequential processing.
 - **🎨 Modern & Responsive UI**: Built with the **Slint** framework for a sleek, lightweight, and native Windows experience.
@@ -37,6 +38,7 @@ Place your `.onnx` upscaling models in the **root directory** of the application
 
 **Note**: 
 - Only support fp32 onnx model. In case of fp16 model (e.g., 4xNomos8kSCHAT-L.onnx, 4xNomos8kSCHAT-S.onnx), please convert it to fp32. (using https://github.com/kirinonakar/Python_onnx, convert_fp32.py)
+- In case of HAT model, 256x256 tile size is recommended due to memory limitation.
 
 **Recommended models**: 
 - Real-ESRGAN_x4plus

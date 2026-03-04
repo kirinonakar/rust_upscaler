@@ -19,6 +19,8 @@ export component MainWindow inherits Window {
     in-out property <string> selected_model: "";
     in property <[string]> scale_options: ["x2", "x3", "x4", "1M Pixels", "2M Pixels", "3M Pixels", "4M Pixels", "5M Pixels", "6M Pixels"];
     in-out property <string> selected_scale: "3M Pixels";
+    in property <[string]> tile_options: ["256x256", "512x512"];
+    in-out property <string> selected_tile: "512x512";
 
     VerticalBox {
         spacing: 10px;
@@ -61,6 +63,8 @@ export component MainWindow inherits Window {
             height: 50px; // Fixed height for 1 line
             Text {
                  text: "Model: ";
+                 width: 60px;
+                 horizontal-alignment: right;
                  vertical-alignment: center;
             }
             ComboBox {
@@ -78,6 +82,8 @@ export component MainWindow inherits Window {
             height: 50px; // Fixed height for 1 line
             Text {
                  text: "Scale: ";
+                 width: 60px;
+                 horizontal-alignment: right;
                  vertical-alignment: center;
             }
             ComboBox {
@@ -86,6 +92,25 @@ export component MainWindow inherits Window {
                 current-value: root.selected_scale;
                 selected => {
                     root.selected_scale = self.current-value;
+                }
+            }
+        }
+
+        HorizontalBox {
+            alignment: center;
+            height: 50px; // Fixed height for 1 line
+            Text {
+                 text: "Tile: ";
+                 width: 60px;
+                 horizontal-alignment: right;
+                 vertical-alignment: center;
+            }
+            ComboBox {
+                width: 300px;
+                model: root.tile_options;
+                current-value: root.selected_tile;
+                selected => {
+                    root.selected_tile = self.current-value;
                 }
             }
         }

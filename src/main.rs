@@ -65,25 +65,35 @@ enum ModelType {
 }
 
 impl ModelType {
-    fn forward(&mut self, x: &Tensor) -> Result<Tensor> {
+    fn forward(&mut self, x: &Tensor, tile_size: usize) -> Result<Tensor> {
         match self {
             ModelType::Onnx(s) => {
                 let device = x.device().clone();
                 let (b, c, h, w) = x.dims4().map_err(anyhow::Error::msg)?;
                 
-                // Tiling logic for large images
-                // Real-ESRGAN x4 usually needs tiles around 256-512 to be safe on mid-range GPUs
-                let tile_size = 512;
-                
+                // This is now purely for non-tiled or simple cases if called directly.
+                // tiling is handled at a higher level in process_image for better progress reporting.
                 if h > tile_size || w > tile_size {
-                    println!("[ONNX] Large image detected ({}x{}), using tiling (size {})...", w, h, tile_size);
-                    Self::forward_tiled(x, s, tile_size)
+                    // Fallback to tiling without callback if called this way
+                    Self::forward_tiled(x, s, tile_size, |_, _| {})
                 } else {
                     println!("[ONNX] Standard inference. Shape: [{}, {}, {}, {}]", b, c, h, w);
-                    let data = x.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
+                    
+                    // Ensure dimensions are multiples of 32
+                    let h_32 = (h + 31) / 32 * 32;
+                    let w_32 = (w + 31) / 32 * 32;
+                    
+                    let x_padded = if h_32 > h || w_32 > w {
+                        x.pad_with_zeros(2, 0, h_32 - h)?
+                         .pad_with_zeros(3, 0, w_32 - w)?
+                    } else {
+                        x.clone()
+                    };
+
+                    let data = x_padded.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
                     let input_name = s.inputs().first().map(|i| i.name().to_string()).unwrap_or_else(|| "input".to_string());
                     
-                    let input_val = Value::from_array(([b, c, h, w], data)).map_err(anyhow::Error::msg)?;
+                    let input_val = Value::from_array(([b, c, h_32, w_32], data)).map_err(anyhow::Error::msg)?;
                     let start = std::time::Instant::now();
                     let outputs = s.run(ort::inputs![input_name.as_str() => input_val]).map_err(anyhow::Error::msg)?;
                     println!("[ONNX] Inference completed in {:?}", start.elapsed());
@@ -93,19 +103,28 @@ impl ModelType {
                     let output_vec = output_slice.to_vec();
                     let dims: Vec<usize> = dims_shape.iter().map(|&d| d as usize).collect();
                     
-                    if dims.len() == 4 {
-                        Tensor::from_vec(output_vec, (dims[0], dims[1], dims[2], dims[3]), &device).map_err(anyhow::Error::msg)
+                    let t_out = if dims.len() == 4 {
+                        Tensor::from_vec(output_vec, (dims[0], dims[1], dims[2], dims[3]), &device).map_err(anyhow::Error::msg)?
                     } else if dims.len() == 3 {
-                        Tensor::from_vec(output_vec, (1, dims[0], dims[1], dims[2]), &device).map_err(anyhow::Error::msg)
+                        Tensor::from_vec(output_vec, (1, dims[0], dims[1], dims[2]), &device).map_err(anyhow::Error::msg)?
                     } else {
-                        Err(anyhow::anyhow!("Unsupported output shape: {:?}", dims))
+                        return Err(anyhow::anyhow!("Unsupported output shape: {:?}", dims));
+                    };
+
+                    // Crop back to original scale
+                    let scale = dims[2] / h_32;
+                    if h_32 > h || w_32 > w {
+                        Ok(t_out.narrow(2, 0, h * scale)?.narrow(3, 0, w * scale)?)
+                    } else {
+                        Ok(t_out)
                     }
                 }
             }
         }
     }
 
-    fn forward_tiled(x: &Tensor, s: &mut Session, tile_size: usize) -> Result<Tensor> {
+    fn forward_tiled<F>(x: &Tensor, s: &mut Session, tile_size: usize, mut progress_cb: F) -> Result<Tensor> 
+    where F: FnMut(usize, usize) {
         let start_all = std::time::Instant::now();
         let device = x.device().clone();
         let (b, c, h, w) = x.dims4().map_err(anyhow::Error::msg)?;
@@ -116,9 +135,18 @@ impl ModelType {
         let mut scale = 0;
         
         let mut row_tensors = Vec::new();
+        
+        let num_y_steps = (h + tile_size - 1) / tile_size;
+        let num_x_steps = (w + tile_size - 1) / tile_size;
+        let total_tiles = num_y_steps * num_x_steps;
+        let mut tile_counter = 0;
+
         for y in (0..h).step_by(tile_size) {
             let mut col_tensors = Vec::new();
             for x_pos in (0..w).step_by(tile_size) {
+                tile_counter += 1;
+                progress_cb(tile_counter, total_tiles);
+
                 let th = (tile_size).min(h - y);
                 let tw = (tile_size).min(w - x_pos);
                 
@@ -131,9 +159,22 @@ impl ModelType {
                 let p_th = y2 - y1;
                 let p_tw = x2 - x1;
                 
+                // Ensure tile dimensions are multiples of 32
+                let p_th_32 = (p_th + 31) / 32 * 32;
+                let p_tw_32 = (p_tw + 31) / 32 * 32;
+
                 let tile = x.narrow(2, y1, p_th)?.narrow(3, x1, p_tw)?;
+                
+                // Pad if necessary
+                let tile = if p_th_32 > p_th || p_tw_32 > p_tw {
+                    tile.pad_with_zeros(2, 0, p_th_32 - p_th)?
+                        .pad_with_zeros(3, 0, p_tw_32 - p_tw)?
+                } else {
+                    tile
+                };
+
                 let data = tile.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
-                let input_val = Value::from_array(([b, c, p_th, p_tw], data)).map_err(anyhow::Error::msg)?;
+                let input_val = Value::from_array(([b, c, p_th_32, p_tw_32], data)).map_err(anyhow::Error::msg)?;
                 
                 let start_tile = std::time::Instant::now();
                 let outputs = s.run(ort::inputs![input_name.as_str() => input_val]).map_err(anyhow::Error::msg)?;
@@ -210,6 +251,7 @@ fn main() -> Result<()> {
             if ui.get_is_processing() { return; }
             let model_path = ui.get_selected_model().to_string();
             let scale_setting = ui.get_selected_scale().to_string();
+            let tile_setting = ui.get_selected_tile().to_string();
 
             if model_path == "No models found" {
                 ui.set_status_text("Please put .onnx models in the folder".into());
@@ -271,7 +313,7 @@ fn main() -> Result<()> {
                     let status = format!("Processing {} ({} / {}) - Inference start...", filename, i + 1, total);
                     update_status(&ui_thread, status.clone(), i as f32 / total as f32);
 
-                    match process_image(p, &mut model, &device, &scale_setting) {
+                    match process_image(p, &mut model, &device, &scale_setting, &tile_setting, &ui_thread, i, total) {
                         Ok(out_p) => {
                             let done_msg = format!("Finished processing {}!", filename);
                             update_status(&ui_thread, done_msg.clone(), (i + 1) as f32 / total as f32);
@@ -329,7 +371,17 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_setting: &str) -> Result<PathBuf> {
+fn process_image(
+    path: &Path, 
+    model: &mut ModelType, 
+    device: &Device, 
+    scale_setting: &str, 
+    tile_setting: &str,
+    ui_thread: &slint::Weak<MainWindow>,
+    file_idx: usize,
+    total_files: usize
+) -> Result<PathBuf> {
+    let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
     let start_msg = format!("[Process] Loading image: {:?}", path);
     println!("{}", start_msg);
     let img = image::open(path)?;
@@ -348,8 +400,35 @@ fn process_image(path: &Path, model: &mut ModelType, device: &Device, scale_sett
 
     let fw_msg = "[Process] Starting model forward pass...".to_string();
     println!("{}", fw_msg);
-    // Inference
-    let output = model.forward(&tensor)?;
+
+    // Parse tile size
+    let tile_size = if tile_setting.contains("256") { 256 } else { 512 };
+
+    // Inference (with progress reporting)
+    let output = match model {
+        ModelType::Onnx(s) => {
+            let (_b, _c, h_in, w_in) = tensor.dims4().map_err(anyhow::Error::msg)?;
+            if h_in > tile_size || w_in > tile_size {
+                println!("[ONNX] Large image detected ({}x{}), using tiling (size {})...", w_in, h_in, tile_size);
+                
+                let ui_thread_clone = ui_thread.clone();
+                let fname_clone = filename.clone();
+                let progress_callback = move |tile_idx: usize, total_tiles: usize| {
+                    let file_base_progress = file_idx as f32 / total_files as f32;
+                    let file_weight = 1.0 / total_files as f32;
+                    let tile_progress = tile_idx as f32 / total_tiles as f32;
+                    let total_progress = file_base_progress + (tile_progress * file_weight);
+                    
+                    let status = format!("Processing {} ({} / {}) - Tile {}/{}", fname_clone, file_idx + 1, total_files, tile_idx, total_tiles);
+                    update_status(&ui_thread_clone, status, total_progress);
+                };
+
+                ModelType::forward_tiled(&tensor, s, tile_size, progress_callback)?
+            } else {
+                model.forward(&tensor, tile_size)?
+            }
+        }
+    };
     
     let fw_end_msg = "[Process] Forward pass completed.".to_string();
     println!("{}", fw_end_msg);
