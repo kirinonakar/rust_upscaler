@@ -37,7 +37,7 @@ You can download the latest version from the [Releases Page](https://github.com/
 Place your `.onnx` upscaling models in the **root directory** of the application. The app will automatically scan for and list them in the model selection menu.
 
 **Note**: 
-- Only support fp32 onnx model. In case of fp16 model (e.g., 4xNomos8kSCHAT-L.onnx, 4xNomos8kSCHAT-S.onnx), please convert it to fp32. (using https://github.com/kirinonakar/Python_onnx, convert_fp32.py)
+- Only support fp32 onnx model. (due to overflow issue in case of GPU acceleration in fp16 models) In case of fp16 model (e.g., 4xNomos8kSCHAT-L.onnx, 4xNomos8kSCHAT-S.onnx), please convert it to fp32. (using https://github.com/kirinonakar/Python_onnx, convert_fp32.py)
 - In case of HAT model, 256x256 tile size is recommended due to memory limitation.
 
 **Recommended models**: 
