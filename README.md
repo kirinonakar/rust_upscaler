@@ -35,10 +35,15 @@ You can download the latest version from the [Releases Page](https://github.com/
 ### 1. Model Setup
 Place your `.onnx` upscaling models in the **root directory** of the application. The app will automatically scan for and list them in the model selection menu.
 
+**Note**: 
+- Only support fp32 onnx model. In case of fp16 model (e.g., 4xNomos8kSCHAT-L.onnx, 4xNomos8kSCHAT-S.onnx), please convert it to fp32. (using https://github.com/kirinonakar/Python_onnx, convert_fp32.py)
+
 **Recommended models**: 
 - Real-ESRGAN_x4plus
 - Real-ESRGAN_x4plus_anime_6B
 - 4xNomos8kDAT
+- 4xNomos8kSCHAT-L.onnx (after fp32 conversion)
+- 4xNomos8kSCHAT-S.onnx (after fp32 conversion)
 
 
 
