@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use glob::glob;
 use ort::session::Session;
+use ort::session::builder::GraphOptimizationLevel;
 use ort::value::Value;
 
 use std::panic;
@@ -284,6 +285,7 @@ fn main() -> Result<()> {
                     
                     println!("[ONNX] Attempting to build DirectML environment...");
                     let builder = Session::builder().map_err(anyhow::Error::msg)?
+                        .with_optimization_level(GraphOptimizationLevel::Level3).map_err(anyhow::Error::msg)?
                         .with_execution_providers([DirectMLExecutionProvider::default()
                             .with_device_id(0)
                             .build()])
