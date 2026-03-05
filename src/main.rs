@@ -92,11 +92,21 @@ impl ModelType {
                     };
 
                     let data = x_padded.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
-                    let input_name = s.inputs().first().map(|i| i.name().to_string()).unwrap_or_else(|| "input".to_string());
+                    let inputs_info = s.inputs();
+                    let input_name = inputs_info.iter()
+                        .find(|i| i.name() != "alpha")
+                        .map(|i| i.name().to_string())
+                        .unwrap_or_else(|| "input".to_string());
                     
                     let input_val = Value::from_array(([b, c, h_32, w_32], data)).map_err(anyhow::Error::msg)?;
                     let start = std::time::Instant::now();
-                    let outputs = s.run(ort::inputs![input_name.as_str() => input_val]).map_err(anyhow::Error::msg)?;
+                    
+                    let outputs = if inputs_info.iter().any(|i| i.name() == "alpha") {
+                        let alpha_val = Value::from_array((Vec::<i64>::new(), vec![1i64])).map_err(anyhow::Error::msg)?;
+                        s.run(ort::inputs![input_name.as_str() => input_val, "alpha" => alpha_val])
+                    } else {
+                        s.run(ort::inputs![input_name.as_str() => input_val])
+                    }.map_err(anyhow::Error::msg)?;
                     println!("[ONNX] Inference completed in {:?}", start.elapsed());
                     
                     let output_val = outputs.iter().next().map(|(_, v)| v).ok_or_else(|| anyhow::anyhow!("No outputs from model"))?;
@@ -129,7 +139,13 @@ impl ModelType {
         let start_all = std::time::Instant::now();
         let device = x.device().clone();
         let (b, c, h, w) = x.dims4().map_err(anyhow::Error::msg)?;
-        let input_name = s.inputs().first().map(|i| i.name().to_string()).unwrap_or_else(|| "input".to_string());
+        let inputs_info = s.inputs();
+        let input_name = inputs_info.iter()
+            .find(|i| i.name() != "alpha")
+            .map(|i| i.name().to_string())
+            .unwrap_or_else(|| "input".to_string());
+        
+        let has_alpha = inputs_info.iter().any(|i| i.name() == "alpha");
         
         // Settings for high quality tiling
         let pad = 32; // Overlap/Padding size to avoid edge artifacts. 32 is standard for high quality.
@@ -178,7 +194,12 @@ impl ModelType {
                 let input_val = Value::from_array(([b, c, p_th_32, p_tw_32], data)).map_err(anyhow::Error::msg)?;
                 
                 let start_tile = std::time::Instant::now();
-                let outputs = s.run(ort::inputs![input_name.as_str() => input_val]).map_err(anyhow::Error::msg)?;
+                let outputs = if has_alpha {
+                    let alpha_val = Value::from_array((Vec::<i64>::new(), vec![1i64])).map_err(anyhow::Error::msg)?;
+                    s.run(ort::inputs![input_name.as_str() => input_val, "alpha" => alpha_val])
+                } else {
+                    s.run(ort::inputs![input_name.as_str() => input_val])
+                }.map_err(anyhow::Error::msg)?;
                 let tile_time = start_tile.elapsed();
                 
                 let output_val = outputs.iter().next().map(|(_, v)| v).ok_or_else(|| anyhow::anyhow!("No outputs from model"))?;

@@ -37,8 +37,10 @@ You can download the latest version from the [Releases Page](https://github.com/
 Place your `.onnx` upscaling models in the **root directory** of the application. The app will automatically scan for and list them in the model selection menu.
 
 **Note**: 
-- Only support fp32 onnx model. (due to overflow issue in case of GPU acceleration in fp16 models) In case of fp16 model (e.g., 4xNomos8kSCHAT-L.onnx, 4xNomos8kSCHAT-S.onnx), please convert it to fp32. (using https://github.com/kirinonakar/Python_onnx, convert_fp32.py)
-- In case of HAT model, 256x256 tile size is recommended due to memory limitation.
+- **Floating Point**: Only FP32 ONNX models are supported (to avoid overflow issues with GPU acceleration). If you have an FP16 model, please convert it to FP32.
+- **Dynamic Shapes**: Models with static input shapes are not supported. If your ONNX model has a fixed resolution, it must be re-converted to use **Dynamic Axes** to work with various image dimensions and tiling.
+- Using https://github.com/kirinonakar/Python_onnx to ONNX conversion
+- **Tiling**: For HAT models, a tile size of 256x256 is recommended due to memory limitations.
 
 **Recommended models**: 
 - Real-ESRGAN_x4plus
@@ -46,6 +48,7 @@ Place your `.onnx` upscaling models in the **root directory** of the application
 - 4xNomos8kDAT
 - 4xNomos8kSCHAT-L.onnx (after fp32 conversion)
 - 4xNomos8kSCHAT-S.onnx (after fp32 conversion)
+- 4xRealWebPhoto_v4_drct-l.onnx (after Dynamic Axes conversion)
 
 
 
