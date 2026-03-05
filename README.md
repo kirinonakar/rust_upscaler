@@ -50,8 +50,6 @@ Place your `.onnx` upscaling models in the **root directory** of the application
 - 4xNomos8kSCHAT-S.onnx (after fp32 conversion)
 - 4xRealWebPhoto_v4_drct-l.onnx (after Dynamic Axes conversion)
 
-
-
 ### 2. Processing Images
 1.  Launch the application.
 2.  Select your desired **ONNX Model** from the dropdown.
