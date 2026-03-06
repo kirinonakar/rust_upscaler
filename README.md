@@ -37,18 +37,20 @@ You can download the latest version from the [Releases Page](https://github.com/
 Place your `.onnx` upscaling models in the **root directory** of the application. The app will automatically scan for and list them in the model selection menu.
 
 **Note**: 
-- **Floating Point**: Only FP32 ONNX models are supported (to avoid overflow issues with GPU acceleration). If you have an FP16 model, please convert it to FP32.
+- **Floating Point**: When using GPU acceleration (DirectML, CUDA), transformer models such as HAT, DAT, and SwinIR may encounter overflow (NaN errors or black images) in FP16 precision. Please use FP32 for these architectures. DRCT models may be compatible with FP16.
 - **Dynamic Shapes**: Models with static input shapes are not supported. If your ONNX model has a fixed resolution, it must be re-converted to use **Dynamic Axes** to work with various image dimensions and tiling.
-- Using https://github.com/kirinonakar/Python_onnx to ONNX conversion
-- **Tiling**: For HAT models, a tile size of 256x256 is recommended due to memory limitations.
+- **Model Conversion**: Use [Python_onnx](https://github.com/kirinonakar/Python_onnx) to convert and optimize models for compatibility with this application.
+- **Tiling**: For HAT-based models, a tile size of 256x256 is recommended to stay within memory limits.
 
 **Recommended models**: 
 - Real-ESRGAN_x4plus
 - Real-ESRGAN_x4plus_anime_6B
-- 4xNomos8kDAT
-- 4xNomos8kSCHAT-L.onnx (after fp32 conversion)
-- 4xNomos8kSCHAT-S.onnx (after fp32 conversion)
-- 4xRealWebPhoto_v4_drct-l.onnx (after Dynamic Axes conversion)
+- SwinIR_4x (FP32 only)
+- 4xNomos8kDAT (FP32 only)
+- Real_HAT_GAN_SRx4 (FP32 only, 256x256 tile recommended)
+- 4xNomos8kSCHAT-L (FP32 only, 256x256 tile recommended)
+- 4xNomos8kSCHAT-S (FP32 only, 256x256 tile recommended)
+- 4xRealWebPhoto_v4_drct-l (Dynamic Axes only)
 
 ### 2. Processing Images
 1.  Launch the application.
