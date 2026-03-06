@@ -11,6 +11,7 @@ use glob::glob;
 use ort::session::Session;
 use ort::session::builder::GraphOptimizationLevel;
 use ort::value::Value;
+use half::f16;
 
 use std::panic;
 
@@ -92,28 +93,41 @@ impl ModelType {
                     };
 
                     let data = x_padded.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
-                    let inputs_info = s.inputs();
-                    let input_name = inputs_info.iter()
-                        .find(|i| i.name() != "alpha")
-                        .map(|i| i.name().to_string())
-                        .unwrap_or_else(|| "input".to_string());
-                    
-                    let input_val = Value::from_array(([b, c, h_32, w_32], data)).map_err(anyhow::Error::msg)?;
+                    let input_metas: Vec<(String, bool)> = s.inputs().iter().map(|i| {
+                        (i.name().to_string(), format!("{:?}", i).contains("Float16"))
+                    }).collect();
+
+                    let mut input_feed = Vec::new();
+                    for (name, is_fp16) in input_metas {
+                        if name == "alpha" {
+                            let alpha_val = Value::from_array((Vec::<i64>::new(), vec![1i64])).map_err(anyhow::Error::msg)?;
+                            input_feed.push((name, alpha_val.into_dyn()));
+                        } else {
+                            if is_fp16 {
+                                let data_f16: Vec<f16> = data.iter().map(|&f| f16::from_f32(f)).collect();
+                                let input_val = Value::from_array(([b, c, h_32, w_32], data_f16)).map_err(anyhow::Error::msg)?;
+                                input_feed.push((name, input_val.into_dyn()));
+                            } else {
+                                let input_val = Value::from_array(([b, c, h_32, w_32], data.clone())).map_err(anyhow::Error::msg)?;
+                                input_feed.push((name, input_val.into_dyn()));
+                            }
+                        }
+                    }
+
                     let start = std::time::Instant::now();
-                    
-                    let outputs = if inputs_info.iter().any(|i| i.name() == "alpha") {
-                        let alpha_val = Value::from_array((Vec::<i64>::new(), vec![1i64])).map_err(anyhow::Error::msg)?;
-                        s.run(ort::inputs![input_name.as_str() => input_val, "alpha" => alpha_val])
-                    } else {
-                        s.run(ort::inputs![input_name.as_str() => input_val])
-                    }.map_err(anyhow::Error::msg)?;
+                    let outputs = s.run(input_feed.iter().map(|(k, v)| (k.as_str(), v)).collect::<Vec<_>>()).map_err(anyhow::Error::msg)?;
                     println!("[ONNX] Inference completed in {:?}", start.elapsed());
                     
                     let output_val = outputs.iter().next().map(|(_, v)| v).ok_or_else(|| anyhow::anyhow!("No outputs from model"))?;
-                    let (dims_shape, output_slice) = output_val.try_extract_tensor::<f32>().map_err(anyhow::Error::msg)?;
-                    let output_vec = output_slice.to_vec();
-                    let dims: Vec<usize> = dims_shape.iter().map(|&d| d as usize).collect();
                     
+                    let (dims, output_vec) = if let Ok((dims, slice)) = output_val.try_extract_tensor::<f32>() {
+                        (dims.iter().map(|&d| d as usize).collect::<Vec<_>>(), slice.to_vec())
+                    } else if let Ok((dims, slice)) = output_val.try_extract_tensor::<f16>() {
+                        (dims.iter().map(|&d| d as usize).collect::<Vec<_>>(), slice.iter().map(|&f| f.to_f32()).collect())
+                    } else {
+                        return Err(anyhow::anyhow!("Unsupported output type"));
+                    };
+
                     let t_out = if dims.len() == 4 {
                         Tensor::from_vec(output_vec, (dims[0], dims[1], dims[2], dims[3]), &device).map_err(anyhow::Error::msg)?
                     } else if dims.len() == 3 {
@@ -139,13 +153,9 @@ impl ModelType {
         let start_all = std::time::Instant::now();
         let device = x.device().clone();
         let (b, c, h, w) = x.dims4().map_err(anyhow::Error::msg)?;
-        let inputs_info = s.inputs();
-        let input_name = inputs_info.iter()
-            .find(|i| i.name() != "alpha")
-            .map(|i| i.name().to_string())
-            .unwrap_or_else(|| "input".to_string());
-        
-        let has_alpha = inputs_info.iter().any(|i| i.name() == "alpha");
+        let input_metas: Vec<(String, bool)> = s.inputs().iter().map(|i| {
+            (i.name().to_string(), format!("{:?}", i).contains("Float16"))
+        }).collect();
         
         // Settings for high quality tiling
         let pad = 32; // Overlap/Padding size to avoid edge artifacts. 32 is standard for high quality.
@@ -191,29 +201,47 @@ impl ModelType {
                 };
 
                 let data = tile.to_device(&Device::Cpu)?.flatten_all()?.to_vec1::<f32>()?;
-                let input_val = Value::from_array(([b, c, p_th_32, p_tw_32], data)).map_err(anyhow::Error::msg)?;
                 
+                let mut input_feed = Vec::new();
+                for (name, is_fp16) in input_metas.iter() {
+                    if name == "alpha" {
+                        let alpha_val = Value::from_array((Vec::<i64>::new(), vec![1i64])).map_err(anyhow::Error::msg)?;
+                        input_feed.push((name.clone(), alpha_val.into_dyn()));
+                    } else {
+                        if *is_fp16 {
+                            let data_f16: Vec<f16> = data.iter().map(|&f| f16::from_f32(f)).collect();
+                            let input_val = Value::from_array(([b, c, p_th_32, p_tw_32], data_f16)).map_err(anyhow::Error::msg)?;
+                            input_feed.push((name.clone(), input_val.into_dyn()));
+                        } else {
+                            let input_val = Value::from_array(([b, c, p_th_32, p_tw_32], data.clone())).map_err(anyhow::Error::msg)?;
+                            input_feed.push((name.clone(), input_val.into_dyn()));
+                        }
+                    }
+                }
+
                 let start_tile = std::time::Instant::now();
-                let outputs = if has_alpha {
-                    let alpha_val = Value::from_array((Vec::<i64>::new(), vec![1i64])).map_err(anyhow::Error::msg)?;
-                    s.run(ort::inputs![input_name.as_str() => input_val, "alpha" => alpha_val])
-                } else {
-                    s.run(ort::inputs![input_name.as_str() => input_val])
-                }.map_err(anyhow::Error::msg)?;
+                let outputs = s.run(input_feed.iter().map(|(k, v)| (k.as_str(), v)).collect::<Vec<_>>()).map_err(anyhow::Error::msg)?;
                 let tile_time = start_tile.elapsed();
                 
                 let output_val = outputs.iter().next().map(|(_, v)| v).ok_or_else(|| anyhow::anyhow!("No outputs from model"))?;
-                let (dims_shape, output_slice) = output_val.try_extract_tensor::<f32>().map_err(anyhow::Error::msg)?;
                 
-                let out_h = dims_shape[2] as usize;
-                let out_w = dims_shape[3] as usize;
+                let (dims, output_vec) = if let Ok((dims, slice)) = output_val.try_extract_tensor::<f32>() {
+                    (dims.iter().map(|&d| d as usize).collect::<Vec<_>>(), slice.to_vec())
+                } else if let Ok((dims, slice)) = output_val.try_extract_tensor::<f16>() {
+                    (dims.iter().map(|&d| d as usize).collect::<Vec<_>>(), slice.iter().map(|&f| f.to_f32()).collect())
+                } else {
+                    return Err(anyhow::anyhow!("Unsupported output type"));
+                };
+                
+                let out_h = dims[2];
+                let out_w = dims[3];
                 
                 if scale == 0 {
                     scale = out_h / p_th;
                     println!("[Tiling] Detected scale factor: {}", scale);
                 }
                 
-                let t_out = Tensor::from_vec(output_slice.to_vec(), (dims_shape[0] as usize, dims_shape[1] as usize, out_h, out_w), &device).map_err(anyhow::Error::msg)?;
+                let t_out = Tensor::from_vec(output_vec, (dims[0], dims[1], out_h, out_w), &device).map_err(anyhow::Error::msg)?;
                 
                 // Crop out the padding from the upscaled tile
                 let crop_y = (y - y1) * scale;

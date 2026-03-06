@@ -16,8 +16,9 @@ raw-window-handle = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 glob = "0.3"
-ort = { version = "=2.0.0-rc.11", features = ["ndarray", "directml"] }
+ort = { version = "=2.0.0-rc.11", features = ["ndarray", "directml", "half"] }
 ndarray = "0.15"
+half = "2.4"
 
 [build-dependencies]
 slint-build = "1.15.1"
