@@ -42,14 +42,20 @@ Place your `.onnx` upscaling models in the **root directory** of the application
 - **Tiling**: For HAT-based models, a tile size of 256x256 is recommended to stay within memory limits.
 
 **Recommended models**: 
-- Real-ESRGAN_x4plus
+
+Anime
 - Real-ESRGAN_x4plus_anime_6B
-- SwinIR_4x (FP32 only)
+- Real_HAT_GAN_sharper (FP32 only, 256x256 tile recommended)
+
+Real
+- Real-ESRGAN_x4plus
 - 4xNomos8kDAT (FP32 only)
 - Real_HAT_GAN_SRx4 (FP32 only, 256x256 tile recommended)
 - 4xNomos8kSCHAT-L (FP32 only, 256x256 tile recommended)
 - 4xNomos8kSCHAT-S (FP32 only, 256x256 tile recommended)
 - 4xRealWebPhoto_v4_drct-l (Dynamic Axes only)
+
+*Real-CUGAN is not supported.
 
 ### 2. Processing Images
 1.  Launch the application.
