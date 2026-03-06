@@ -55,6 +55,8 @@ Real
 - 4xNomos8kSCHAT-S (FP32 only, 256x256 tile recommended)
 - 4xRealWebPhoto_v4_drct-l (Dynamic Axes only)
 
+*My favorite model is 4xNomos8kDAT.
+
 *Real-CUGAN is not supported.
 
 ### 2. Processing Images
