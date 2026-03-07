@@ -42,6 +42,7 @@ Place your `.onnx` upscaling models in the **root directory** of the application
 - **Tiling**: For HAT-based models, a tile size of 256x256 is recommended to stay within memory limits.
 
 **Recommended models**: 
+(You can download models from [OpenModelDB](https://openmodeldb.info/))
 
 Anime
 - Real-ESRGAN_x4plus_anime_6B

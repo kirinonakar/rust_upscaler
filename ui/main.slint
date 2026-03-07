@@ -16,11 +16,19 @@ export component MainWindow inherits Window {
 
     // Model list and scaling options
     in property <[string]> models: ["No models found"];
-    in-out property <string> selected_model: "";
+    in-out property <int> selected_model_index: 0;
+    out property <string> selected_model: root.models[root.selected_model_index];
+
     in property <[string]> scale_options: ["x2", "x3", "x4", "1M Pixels", "2M Pixels", "3M Pixels", "4M Pixels", "5M Pixels", "6M Pixels"];
-    in-out property <string> selected_scale: "3M Pixels";
+    in-out property <int> selected_scale_index: 5;
+    out property <string> selected_scale: root.scale_options[root.selected_scale_index];
+
     in property <[string]> tile_options: ["256x256", "512x512"];
-    in-out property <string> selected_tile: "512x512";
+    in-out property <int> selected_tile_index: 1;
+    out property <string> selected_tile: root.tile_options[root.selected_tile_index];
+
+    in-out property <string> output_folder: "";
+    callback select_output_folder();
 
     VerticalBox {
         spacing: 10px;
@@ -70,10 +78,7 @@ export component MainWindow inherits Window {
             ComboBox {
                 width: 300px;
                 model: root.models;
-                current-value: root.selected_model;
-                selected => {
-                    root.selected_model = self.current-value;
-                }
+                current-index <=> root.selected_model_index;
             }
         }
 
@@ -89,10 +94,7 @@ export component MainWindow inherits Window {
             ComboBox {
                 width: 300px;
                 model: root.scale_options;
-                current-value: root.selected_scale;
-                selected => {
-                    root.selected_scale = self.current-value;
-                }
+                current-index <=> root.selected_scale_index;
             }
         }
 
@@ -108,10 +110,36 @@ export component MainWindow inherits Window {
             ComboBox {
                 width: 300px;
                 model: root.tile_options;
-                current-value: root.selected_tile;
-                selected => {
-                    root.selected_tile = self.current-value;
-                }
+                current-index <=> root.selected_tile_index;
+            }
+        }
+
+        HorizontalBox {
+            alignment: center;
+            height: 50px; // Fixed height for 1 line
+            Text {
+                 text: "Output: ";
+                 width: 60px;
+                 horizontal-alignment: right;
+                 vertical-alignment: center;
+            }
+            Text {
+                 text: root.output_folder == "" ? "Same as image dir" : root.output_folder;
+                 width: 140px;
+                 vertical-alignment: center;
+                 overflow: elide;
+                 color: root.output_folder == "" ? gray : black;
+            }
+            Button {
+                 text: "Browse...";
+                 width: 75px;
+                 clicked => { root.select_output_folder(); }
+            }
+            Button {
+                 text: "Default";
+                 width: 60px;
+                 enabled: root.output_folder != "";
+                 clicked => { root.output_folder = ""; }
             }
         }
 

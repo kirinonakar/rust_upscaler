@@ -264,6 +264,21 @@ impl ModelType {
     }
 }
 
+fn get_image_files(dir: &Path, paths: &mut Vec<PathBuf>) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                get_image_files(&path, paths);
+            } else if let Some(ext) = path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+                if ["png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff"].contains(&ext.as_str()) {
+                    paths.push(path);
+                }
+            }
+        }
+    }
+}
+
 // --- Main Application ---
 
 fn main() -> Result<()> {
@@ -290,7 +305,7 @@ fn main() -> Result<()> {
         model_files.sort();
         let slint_models: Vec<slint::SharedString> = model_files.iter().map(|s| s.into()).collect();
         ui.set_models(std::rc::Rc::new(slint::VecModel::from(slint_models)).into());
-        ui.set_selected_model(model_files[0].clone().into());
+        ui.set_selected_model_index(0);
     }
 
     // 2. Handle files dropped
@@ -302,6 +317,7 @@ fn main() -> Result<()> {
             let model_path = ui.get_selected_model().to_string();
             let scale_setting = ui.get_selected_scale().to_string();
             let tile_setting = ui.get_selected_tile().to_string();
+            let output_folder_setting = ui.get_output_folder().to_string();
 
             if model_path == "No models found" {
                 ui.set_status_text("Please put .onnx models in the folder".into());
@@ -311,12 +327,23 @@ fn main() -> Result<()> {
             let mut paths = Vec::new();
             if path.is_empty() {
                 if let Some(files) = rfd::FileDialog::new()
-                    .add_filter("Image", &["png", "jpg", "jpeg", "bmp", "webp"])
+                    .add_filter("Image", &["png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff"])
                     .pick_files() {
                     paths.extend(files);
                 }
             } else {
-                paths.extend(path.split('|').map(PathBuf::from));
+                for p_str in path.split('|') {
+                    let p = PathBuf::from(p_str);
+                    if p.is_dir() {
+                        get_image_files(&p, &mut paths);
+                    } else if let Some(ext) = p.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+                        if ["png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff"].contains(&ext.as_str()) {
+                            paths.push(p);
+                        }
+                    } else {
+                        paths.push(p);
+                    }
+                }
             }
 
             if paths.is_empty() { return; }
@@ -364,7 +391,7 @@ fn main() -> Result<()> {
                     let status = format!("Processing {} ({} / {}) - Inference start...", filename, i + 1, total);
                     update_status(&ui_thread, status.clone(), i as f32 / total as f32);
 
-                    match process_image(p, &mut model, &device, &scale_setting, &tile_setting, &ui_thread, i, total) {
+                    match process_image(p, &mut model, &device, &scale_setting, &tile_setting, &output_folder_setting, &ui_thread, i, total) {
                         Ok(out_p) => {
                             let done_msg = format!("Finished processing {}!", filename);
                             update_status(&ui_thread, done_msg.clone(), (i + 1) as f32 / total as f32);
@@ -418,6 +445,17 @@ fn main() -> Result<()> {
         });
     }
 
+    ui.on_select_output_folder({
+        let ui_weak = ui_weak.clone();
+        move || {
+            if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+                if let Some(ui) = ui_weak.upgrade() {
+                    ui.set_output_folder(slint::SharedString::from(folder.to_string_lossy().into_owned()));
+                }
+            }
+        }
+    });
+
     ui.run()?;
     Ok(())
 }
@@ -428,6 +466,7 @@ fn process_image(
     device: &Device, 
     scale_setting: &str, 
     tile_setting: &str,
+    output_folder_setting: &str,
     ui_thread: &slint::Weak<MainWindow>,
     file_idx: usize,
     total_files: usize
@@ -526,7 +565,13 @@ fn process_image(
     }
 
     let stem = path.file_stem().unwrap().to_string_lossy();
-    let out_path = path.with_file_name(format!("{}_upscaled.png", stem));
+    let out_path = if output_folder_setting.is_empty() {
+        path.with_file_name(format!("{}_upscaled.png", stem))
+    } else {
+        let mut p = PathBuf::from(output_folder_setting);
+        p.push(format!("{}_upscaled.png", stem));
+        p
+    };
     
     // Fast PNG saving: Use 'Fast' compression and 'NoFilter' to significantly reduce CPU time.
     let file = std::fs::File::create(&out_path)?;
