@@ -24,3 +24,10 @@ half = "2.4"
 slint-build = "1.15.1"
 winres = "0.1.12"
 winresource = "0.1"
+
+[profile.release]
+opt-level = "z"      # 크기 최적화 (s 또는 z)
+lto = true           # Link Time Optimization: 미사용 코드 제거
+codegen-units = 1    # 병렬 컴파일을 제한하여 최적화 기회 극대화
+panic = "abort"      # 패닉 발생 시 스택 추적 정보 제거
+strip = true         # 심볼 정보 및 디버그 정보 강제 제거

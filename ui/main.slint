@@ -1,8 +1,8 @@
 import { VerticalBox, Button, CheckBox, ProgressIndicator, ComboBox, HorizontalBox } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
-    width: 600px;
-    height: 700px;
+    width: 500px;
+    height: 600px;
     title: "Image Upscaler";
     icon: @image-url("../app.ico");
 
@@ -66,51 +66,54 @@ export component MainWindow inherits Window {
             vertical-stretch: 1;
         }
 
-        HorizontalBox {
-            alignment: center;
-            height: 50px; // Fixed height for 1 line
-            Text {
-                 text: "Model: ";
-                 width: 60px;
-                 horizontal-alignment: right;
-                 vertical-alignment: center;
+        VerticalLayout {
+            spacing: 0px;
+            HorizontalBox {
+                alignment: center;
+                height: 50px; // Fixed height for 1 line
+                Text {
+                     text: "Model: ";
+                     width: 60px;
+                     horizontal-alignment: right;
+                     vertical-alignment: center;
+                }
+                ComboBox {
+                    width: 300px;
+                    model: root.models;
+                    current-index <=> root.selected_model_index;
+                }
             }
-            ComboBox {
-                width: 300px;
-                model: root.models;
-                current-index <=> root.selected_model_index;
-            }
-        }
 
-        HorizontalBox {
-            alignment: center;
-            height: 50px; // Fixed height for 1 line
-            Text {
-                 text: "Scale: ";
-                 width: 60px;
-                 horizontal-alignment: right;
-                 vertical-alignment: center;
+            HorizontalBox {
+                alignment: center;
+                height: 50px; // Fixed height for 1 line
+                Text {
+                     text: "Scale: ";
+                     width: 60px;
+                     horizontal-alignment: right;
+                     vertical-alignment: center;
+                }
+                ComboBox {
+                    width: 300px;
+                    model: root.scale_options;
+                    current-index <=> root.selected_scale_index;
+                }
             }
-            ComboBox {
-                width: 300px;
-                model: root.scale_options;
-                current-index <=> root.selected_scale_index;
-            }
-        }
 
-        HorizontalBox {
-            alignment: center;
-            height: 50px; // Fixed height for 1 line
-            Text {
-                 text: "Tile: ";
-                 width: 60px;
-                 horizontal-alignment: right;
-                 vertical-alignment: center;
-            }
-            ComboBox {
-                width: 300px;
-                model: root.tile_options;
-                current-index <=> root.selected_tile_index;
+            HorizontalBox {
+                alignment: center;
+                height: 50px; // Fixed height for 1 line
+                Text {
+                     text: "Tile: ";
+                     width: 60px;
+                     horizontal-alignment: right;
+                     vertical-alignment: center;
+                }
+                ComboBox {
+                    width: 300px;
+                    model: root.tile_options;
+                    current-index <=> root.selected_tile_index;
+                }
             }
         }
 

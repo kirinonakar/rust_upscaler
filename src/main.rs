@@ -474,7 +474,9 @@ fn process_image(
     let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
     let start_msg = format!("[Process] Loading image: {:?}", path);
     println!("{}", start_msg);
-    let img = image::open(path)?;
+    let img = image::ImageReader::open(path)?
+        .with_guessed_format()?
+        .decode()?;
     let (w, h) = img.dimensions();
     let img_rgb = img.to_rgb8();
     let data = img_rgb.into_raw();
