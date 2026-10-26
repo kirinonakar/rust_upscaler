@@ -6,6 +6,8 @@ A high-performance image upscaling application written in **Rust**, powered by *
 ![Rust](https://img.shields.io/badge/Language-Rust-orange)
 ![ONNX](https://img.shields.io/badge/Inference-ONNX-blueviolet)
 ![DirectML](https://img.shields.io/badge/Acceleration-DirectML-green)
+![Slint License](https://img.shields.io/badge/Slint%20License-Royalty--free%20%7C%20GPLv3%20%7C%20Commercial-blue)
+[![Made with Slint](https://img.shields.io/badge/Made%20with-Slint-blueviolet)](https://slint.dev)
 
  <img src="screenshot.png" alt="screenshot1" width="50%">
 
@@ -96,6 +98,18 @@ This project is built using a modern Rust stack:
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Slint License Notice
+
+The user interface of this application is built with **[Slint](https://slint.dev/) 1.15.1** (Copyright © SixtyFPS GmbH). Slint is triple-licensed; you may use it under any one of the following:
+
+- **[Slint Royalty-free Desktop, Mobile and Web Applications License](https://github.com/slint-ui/slint/blob/master/LICENSES/LicenseRef-Slint-Royalty-free-2.0.md)** – free of charge for proprietary desktop, mobile, and web applications, provided the Slint attribution (the `AboutSlint` widget and the "Made with Slint" badge) is displayed.
+- **[GNU General Public License v3 (GPLv3)](https://github.com/slint-ui/slint/blob/master/LICENSES/GPL-3.0-only.txt)** – free of charge for GPL-compatible open source projects, including embedded systems.
+- **[Commercial License](https://slint.dev/pricing)** – for proprietary applications, including embedded systems, with no attribution obligation.
+
+The source code of this project is released under the MIT License (see above) and uses Slint under the **Slint Royalty-free License**. The Slint attribution is provided by the "Made with Slint" badge on this page, and all Slint license notices in the source code are kept unmodified.
+
+Slint is a trademark of SixtyFPS GmbH. Full license texts are available in the [LICENSES folder](https://github.com/slint-ui/slint/tree/master/LICENSES) of the Slint repository.
 
 ---
 
